@@ -1,9 +1,87 @@
+function drawGrassAndReflection(_x, _y, _toX, _toY, _thickness, _fromColor, _toColor, _sizeCurve, _posCurve) {
 
-function drawLightBall(_x, _y, _size, _targetCanvas) {
+    // draw front
+    drawGrassBranch(_x, _y, _toX, _toY, _thickness, _fromColor, _toColor, _sizeCurve, _posCurve, canvasFront);
+  
+    let reflectionY = _y - (_toY - _y);
+    let newFromColor = _fromColor.copy();
+    let newToColor = _toColor.copy();
+    newFromColor.a = 0.6;
+    newToColor.a = -0.6;
+  
+    // draw reflection
+    drawGrassBranch(_x, _y, _toX, reflectionY, _thickness, newFromColor, newToColor, _sizeCurve, _posCurve, canvasReflection);
+  }
+
+function drawFirefly(_x, _y, _height, _heightT, _size) {
+
+    let ballX = _x;
+    let ballY = _y - _height;
+
+    drawLightBall(ballX, ballY, _size * 0.5, 1.0, canvasFront);
+
+    canvasRipples.blendMode(ADD);
+    drawFireflyReflection(_x, _y, _heightT, _size);
+
+    let reflectionBallY = _y + _height;
+    drawLightBall(ballX, reflectionBallY, _size * 0.5, 0.2, canvasReflection);
+}
+
+function drawFireflyReflection(_x, _y, _heightT, _size) {
+    let sizeMultiplier = lerp(2.4, 0.6, _heightT);
+    let reflectionSize = _size * sizeMultiplier;
+
+    let alpha = lerp(0.6, 0.1, _heightT);
+
+    let lineDensity = 0.6;
+    let lineCount = reflectionSize * circlePerspectiveRatio * lineDensity;
+
+    let dotDensity = 0.6;
+
+    for (let y = 0; y < lineCount; y++) {
+
+        let t = y / (lineCount - 1);
+        let centerYt = sin(radians(lerp(10, 170, t))) * 0.8 + 0.2;
+
+        let lineWidthMultiplier = sin(radians(lerp(10, 170, t))) * 0.9 + 0.1;
+        let lineWidth = reflectionSize * lineWidthMultiplier * 2;
+        let dotCount = lineWidth * dotDensity;
+
+        let circleYRadius = reflectionSize * circlePerspectiveRatio;
+        let nowY = lerp(_y - circleYRadius, _y + circleYRadius, t);
+
+        for (let x = 0; x < dotCount; x++) {
+            let xt = x / (dotCount - 1);
+            let alphaMultiplier = sin(radians(lerp(0, 180, xt))) * 0.9 + 0.1;
+
+
+            let dotX = lerp(_x - lineWidth * 0.5, _x + lineWidth * 0.5, xt);
+            let dotY = nowY;
+
+            // wave noise
+            let waveNoise = noise(dotX * 0.06, dotY * 0.03);
+
+            // add wave y
+            // dotY += getWaveValue(dotX, dotY);
+
+            let nowSize = waveNoise * 3 * alphaMultiplier * centerYt;
+
+            let nowColor = getRippleColor();
+            nowColor.a = alpha * alphaMultiplier;
+            // let nowColor = new NYColor(nowHue, nowSat, nowBri, alpha * alphaMultiplier);
+
+            canvasRipples.fill(nowColor.h, nowColor.s, nowColor.b, nowColor.a);
+            canvasRipples.noStroke();
+            canvasRipples.circle(dotX, dotY, nowSize);
+        }
+    }
+}
+
+function drawLightBall(_x, _y, _size, _alpha, _targetCanvas) {
 
     _targetCanvas.blendMode(ADD);
 
-    let layerDensity = random(0.06, 0.12);
+    let layerDensity = random(0.12, 0.24);
     let layerCount = _size * layerDensity;
 
     let nowGlowCurve = random(glowCurves);
@@ -16,38 +94,31 @@ function drawLightBall(_x, _y, _size, _targetCanvas) {
         let thicknessT = nowGlowCurve(t);
         let nowThickness = lerp(6, 0, thicknessT);
 
-        drawLightCircle (_x, _y, nowSize, nowThickness, _targetCanvas);
+        drawLightCircle(_x, _y, nowSize, nowThickness, _alpha, _targetCanvas);
     }
 
     // _targetCanvas.circle(_x, _y, _size);
 }
 
-function drawLightCircle(_x, _y, _size, _thickness, _targetCanvas) {
+function drawLightCircle(_x, _y, _size, _thickness, _alpha, _targetCanvas) {
     let dotDensity = random(0.3, 0.8);
     let circleRadius = _size * 2 * PI;
     let dotCount = circleRadius * dotDensity;
 
-    for(let i=0; i<dotCount; i++) {
+    for (let i = 0; i < dotCount; i++) {
         let t = i / dotCount;
         let nowAngle = lerp(0, 360, t);
-        
+
         let nowX = _x + sin(radians(nowAngle)) * _size;
         let nowY = _y - cos(radians(nowAngle)) * _size;
 
         let nowSize = random(_thickness);
 
-        let nowHue = processHue(60 + random(-30, 30));
-        let nowSat = random(30, 60);
-        let nowBri = random(80, 100);
-
-        let nowColor = new NYColor(nowHue, nowSat, nowBri);
-
-        if(random() < 0.2)
+        let nowColor = getFireflyColor();
+        nowColor.a = _alpha;
+        
+        if (random() < 0.2)
             continue;
-
-        if(random() < 0.12) {
-            nowColor.h = processHue(nowColor.h + 180);
-        }
 
         _targetCanvas.fill(nowColor.h, nowColor.s, nowColor.b, nowColor.a);
         _targetCanvas.noStroke();
@@ -60,7 +131,7 @@ function drawGrassBranch(_fromX, _fromY, _toX, _toY, _thickness, _fromColor, _to
 
     let strokeCount = dist(_fromX, _fromY, _toX, _toY) * strokeDensity;
 
-    canvasFront.strokeWeight(3);
+    canvasFront.strokeWeight(1);
 
     for (let i = 0; i < strokeCount; i++) {
         let t = i / strokeCount;
@@ -85,7 +156,7 @@ function drawGrassBranch(_fromX, _fromY, _toX, _toY, _thickness, _fromColor, _to
 }
 
 function drawRipple(_x, _y, _width, _height, _thicknessT) {
-    let dotDensity = 0.1;
+    let dotDensity = 0.12;
     let dotCount = _width * _height * dotDensity;
 
     for (let i = 0; i < dotCount; i++) {
@@ -96,30 +167,26 @@ function drawRipple(_x, _y, _width, _height, _thicknessT) {
         let nowX = _x + sin(radians(nowAngle)) * _width;
         let nowY = _y - cos(radians(nowAngle)) * _height;
 
-        let nowSize = nowSizeRatio * 6 * easeInCubic(_thicknessT);
+        nowY += getWaveValue(nowX, nowY);
 
-        let nowHue = processHue(mainHue + random(-30, 30) + 180);
-        let nowSat = random(30, 60);
-        let nowBri = random(80, 100);
+        let nowSize = nowSizeRatio * 6 * easeInSine(_thicknessT);
 
-        let nowColor = new NYColor(nowHue, nowSat, nowBri, 0.6 * _thicknessT);
+        let nowColor = getRippleColor();
+        nowColor.a = 0.3 * _thicknessT;
 
         if (random() < 0.6)
             continue;
-
-        if (random() < 0.6) {
-            nowColor.s = 0;
-            nowColor.b = 100;
-        }
-
-        if (random() < 0.12) {
-            nowColor.h = processHue(nowColor.h + 180);
-        }
-
-
 
         canvasRipples.fill(nowColor.h, nowColor.s, nowColor.b, nowColor.a);
         canvasRipples.noStroke();
         canvasRipples.ellipse(nowX, nowY, nowSize, nowSize);
     }
+}
+
+let waveHeight = 1;
+let waveStrength = 3;
+
+function getWaveValue(_x, _y) {
+    let waveValue = (_x * waveStrength) % 360;
+    return (sin(radians(waveValue)) * 2 - 1) * waveHeight;
 }

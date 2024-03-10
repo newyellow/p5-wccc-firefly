@@ -207,3 +207,8 @@ function getAngle(_x1, _y1, _x2, _y2) {
   let yDiff = _y2 - _y1;
   return atan2(yDiff, xDiff) * 180 / PI + 90;
 }
+
+// inverse lerp
+function inverseLerp(_a, _b, _v) {
+  return (_v - _a) / (_b - _a);
+}
